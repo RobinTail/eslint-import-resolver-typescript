@@ -131,7 +131,6 @@ function isBuiltin(moduleName: string) {
  * @param file the importing file's full path; i.e. '/usr/local/bin/file.js'
  * @param options
  */
-// eslint-disable-next-line sonarjs/cognitive-complexity
 export function resolve(
   source: string,
   file: string,
@@ -267,7 +266,6 @@ const isModule = (modulePath?: string | undefined): modulePath is string => {
  * @param {boolean} retry should retry on failed to resolve
  * @returns The mapped path of the module or undefined
  */
-// eslint-disable-next-line sonarjs/cognitive-complexity
 function getMappedPath(
   source: string,
   file: string,
