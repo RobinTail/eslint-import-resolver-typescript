@@ -3,7 +3,7 @@ import { builtinModules } from 'node:module'
 import path from 'node:path'
 
 import debug from 'debug'
-import type { FileSystem, ResolveOptions, Resolver } from 'enhanced-resolve'
+import type { ResolveOptions, Resolver } from 'enhanced-resolve'
 import enhancedResolve from 'enhanced-resolve'
 import { hashObject } from 'eslint-module-utils/hash.js'
 import fg from 'fast-glob'
@@ -99,8 +99,6 @@ type InternalResolverOptions = Required<
   ResolveOptions &
   TsResolverOptions
 
-const fileSystem = fs as FileSystem
-
 const JS_EXT_PATTERN = /\.(?:[cm]js|jsx?)$/
 const RELATIVE_PATH_PATTERN = /^\.{1,2}(?:\/.*)?$/
 
@@ -154,7 +152,7 @@ export function resolve(
       extensionAlias: options?.extensionAlias ?? defaultExtensionAlias,
       mainFields: options?.mainFields ?? defaultMainFields,
       fileSystem: new enhancedResolve.CachedInputFileSystem(
-        fileSystem,
+        fs,
         5 * 1000,
       ),
       useSyncFileSystemCalls: true,
