@@ -1,2 +1,2 @@
 // import using jsconfig.json path mapping
-import '#/importee'
+import "#/importee";

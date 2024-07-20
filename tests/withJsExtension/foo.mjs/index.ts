@@ -1,1 +1,1 @@
-export default 'foo.mjs'
+export default "foo.mjs";

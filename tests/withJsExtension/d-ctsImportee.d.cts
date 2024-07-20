@@ -1,3 +1,3 @@
-declare const content: 'yes'
+declare const content: "yes";
 
-export = content
+export = content;

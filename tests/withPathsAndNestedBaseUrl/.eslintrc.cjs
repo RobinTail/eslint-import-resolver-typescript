@@ -1,1 +1,1 @@
-module.exports = require('../baseEslintConfig.cjs')(__dirname)
+module.exports = require("../baseEslintConfig.cjs")(__dirname);

@@ -1,18 +1,18 @@
 /* eslint-env node */
 /* eslint-disable @typescript-eslint/no-var-requires */
-const config = require('../baseEslintConfig.cjs')(__dirname)
+const config = require("../baseEslintConfig.cjs")(__dirname);
 
 module.exports = {
   ...config,
   rules: {
     ...config.rules,
-    'import/extensions': [
+    "import/extensions": [
       2,
-      'ignorePackages',
+      "ignorePackages",
       {
-        ts: 'never',
-        tsx: 'never',
+        ts: "never",
+        tsx: "never",
       },
     ],
   },
-}
+};

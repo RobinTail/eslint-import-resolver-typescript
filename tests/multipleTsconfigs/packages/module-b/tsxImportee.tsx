@@ -1,1 +1,1 @@
-export default 'React Component'
+export default "React Component";

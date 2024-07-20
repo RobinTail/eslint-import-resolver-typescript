@@ -1,1 +1,1 @@
-export default 'jsImportee.js'
+export default "jsImportee.js";

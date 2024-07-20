@@ -1,2 +1,2 @@
 // import using tsconfig.json `baseUrl`
-import 'foo'
+import "foo";

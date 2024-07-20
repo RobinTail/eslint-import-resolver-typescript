@@ -1,5 +1,5 @@
-const path = require('path')
+const path = require("path");
 
-const configPath = path.join(__dirname, 'jsconfig.json')
+const configPath = path.join(__dirname, "jsconfig.json");
 
-module.exports = require('../baseEslintConfig.cjs')(configPath)
+module.exports = require("../baseEslintConfig.cjs")(configPath);

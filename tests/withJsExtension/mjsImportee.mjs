@@ -1,1 +1,1 @@
-export default 'mjsImportee.mjs'
+export default "mjsImportee.mjs";

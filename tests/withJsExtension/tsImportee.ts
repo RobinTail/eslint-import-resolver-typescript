@@ -1,1 +1,1 @@
-export default 'tsImportee.ts'
+export default "tsImportee.ts";

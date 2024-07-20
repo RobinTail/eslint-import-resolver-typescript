@@ -1,1 +1,1 @@
-export default 'ctsImportee.cts'
+export default "ctsImportee.cts";

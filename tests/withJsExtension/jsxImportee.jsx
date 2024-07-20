@@ -1,1 +1,1 @@
-export default 'jsxImportee.jsx'
+export default "jsxImportee.jsx";

@@ -1,1 +1,1 @@
-export default 'importee'
+export default "importee";

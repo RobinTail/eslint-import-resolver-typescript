@@ -1,1 +1,1 @@
-export default 'yes'
+export default "yes";

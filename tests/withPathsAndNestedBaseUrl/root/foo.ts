@@ -1,2 +1,2 @@
 // import using tsconfig.json path mapping
-import 'other/bar'
+import "other/bar";

@@ -1,121 +1,121 @@
-import fs from 'node:fs'
-import { builtinModules } from 'node:module'
-import path from 'node:path'
+import fs from "node:fs";
+import { builtinModules } from "node:module";
+import path from "node:path";
 
-import debug from 'debug'
-import type { ResolveOptions, Resolver } from 'enhanced-resolve'
-import enhancedResolve from 'enhanced-resolve'
-import { hashObject } from 'eslint-module-utils/hash.js'
-import fg from 'fast-glob'
-import { createPathsMatcher, getTsconfig } from 'get-tsconfig'
-import type { TsConfigResult } from 'get-tsconfig'
-import type { Version } from 'is-bun-module'
-import { isBunModule } from 'is-bun-module'
-import isGlob from 'is-glob'
+import debug from "debug";
+import type { ResolveOptions, Resolver } from "enhanced-resolve";
+import enhancedResolve from "enhanced-resolve";
+import { hashObject } from "eslint-module-utils/hash.js";
+import fg from "fast-glob";
+import { createPathsMatcher, getTsconfig } from "get-tsconfig";
+import type { TsConfigResult } from "get-tsconfig";
+import type { Version } from "is-bun-module";
+import { isBunModule } from "is-bun-module";
+import isGlob from "is-glob";
 
-const { globSync } = fg
+const { globSync } = fg;
 
-const IMPORTER_NAME = 'eslint-import-resolver-typescript'
+const IMPORTER_NAME = "eslint-import-resolver-typescript";
 
-const log = debug(IMPORTER_NAME)
+const log = debug(IMPORTER_NAME);
 
 export const defaultConditionNames = [
-  'types',
-  'import',
+  "types",
+  "import",
 
   // APF: https://angular.io/guide/angular-package-format
-  'esm2020',
-  'es2020',
-  'es2015',
+  "esm2020",
+  "es2020",
+  "es2015",
 
-  'require',
-  'node',
-  'node-addons',
-  'browser',
-  'default',
-]
+  "require",
+  "node",
+  "node-addons",
+  "browser",
+  "default",
+];
 
 /**
  * `.mts`, `.cts`, `.d.mts`, `.d.cts`, `.mjs`, `.cjs` are not included because `.cjs` and `.mjs` must be used explicitly
  */
 export const defaultExtensions = [
-  '.ts',
-  '.tsx',
-  '.d.ts',
-  '.js',
-  '.jsx',
-  '.json',
-  '.node',
-]
+  ".ts",
+  ".tsx",
+  ".d.ts",
+  ".js",
+  ".jsx",
+  ".json",
+  ".node",
+];
 
 export const defaultExtensionAlias = {
-  '.js': [
-    '.ts',
+  ".js": [
+    ".ts",
     // `.tsx` can also be compiled as `.js`
-    '.tsx',
-    '.d.ts',
-    '.js',
+    ".tsx",
+    ".d.ts",
+    ".js",
   ],
-  '.jsx': ['.tsx', '.d.ts', '.jsx'],
-  '.cjs': ['.cts', '.d.cts', '.cjs'],
-  '.mjs': ['.mts', '.d.mts', '.mjs'],
-}
+  ".jsx": [".tsx", ".d.ts", ".jsx"],
+  ".cjs": [".cts", ".d.cts", ".cjs"],
+  ".mjs": [".mts", ".d.mts", ".mjs"],
+};
 
 export const defaultMainFields = [
-  'types',
-  'typings',
+  "types",
+  "typings",
 
   // APF: https://angular.io/guide/angular-package-format
-  'fesm2020',
-  'fesm2015',
-  'esm2020',
-  'es2020',
+  "fesm2020",
+  "fesm2015",
+  "esm2020",
+  "es2020",
 
-  'module',
-  'jsnext:main',
+  "module",
+  "jsnext:main",
 
-  'main',
-]
+  "main",
+];
 
-export const interfaceVersion = 2
+export const interfaceVersion = 2;
 
 export interface TsResolverOptions
-  extends Omit<ResolveOptions, 'fileSystem' | 'useSyncFileSystemCalls'> {
-  alwaysTryTypes?: boolean
-  project?: string[] | string
-  extensions?: string[]
+  extends Omit<ResolveOptions, "fileSystem" | "useSyncFileSystemCalls"> {
+  alwaysTryTypes?: boolean;
+  project?: string[] | string;
+  extensions?: string[];
 }
 
 type InternalResolverOptions = Required<
   Pick<
     ResolveOptions,
-    | 'conditionNames'
-    | 'extensionAlias'
-    | 'extensions'
-    | 'mainFields'
-    | 'useSyncFileSystemCalls'
+    | "conditionNames"
+    | "extensionAlias"
+    | "extensions"
+    | "mainFields"
+    | "useSyncFileSystemCalls"
   >
 > &
   ResolveOptions &
-  TsResolverOptions
+  TsResolverOptions;
 
-const JS_EXT_PATTERN = /\.(?:[cm]js|jsx?)$/
-const RELATIVE_PATH_PATTERN = /^\.{1,2}(?:\/.*)?$/
+const JS_EXT_PATTERN = /\.(?:[cm]js|jsx?)$/;
+const RELATIVE_PATH_PATTERN = /^\.{1,2}(?:\/.*)?$/;
 
-let previousOptionsHash: string
-let optionsHash: string
-let cachedOptions: InternalResolverOptions | undefined
+let previousOptionsHash: string;
+let optionsHash: string;
+let cachedOptions: InternalResolverOptions | undefined;
 
-let prevCwd: string
+let prevCwd: string;
 
-let mappersCachedOptions: InternalResolverOptions
-let mappers: Array<((specifier: string) => string[]) | null> | undefined
+let mappersCachedOptions: InternalResolverOptions;
+let mappers: Array<((specifier: string) => string[]) | null> | undefined;
 
-let resolverCachedOptions: InternalResolverOptions
-let resolver: Resolver | undefined
+let resolverCachedOptions: InternalResolverOptions;
+let resolver: Resolver | undefined;
 
 const digestHashObject = (value: object | null | undefined) =>
-  hashObject(value ?? {}).digest('hex')
+  hashObject(value ?? {}).digest("hex");
 
 /**
  * Checks if a module is a core module
@@ -123,7 +123,7 @@ const digestHashObject = (value: object | null | undefined) =>
  * versions of Node.js, we can use module.isBuiltin instead of this function.
  */
 function isBuiltin(moduleName: string) {
-  return builtinModules.includes(moduleName.replace(/^node:/, ''))
+  return builtinModules.includes(moduleName.replace(/^node:/, ""));
 }
 
 /**
@@ -135,70 +135,72 @@ function isBuiltin(moduleName: string) {
 export function resolve(
   source: string,
   file: string,
-  options?: TsResolverOptions | null,
+  options?: TsResolverOptions | null
 ): {
-  found: boolean
-  path?: string | null
+  found: boolean;
+  path?: string | null;
 } {
   if (
     !cachedOptions ||
     previousOptionsHash !== (optionsHash = digestHashObject(options))
   ) {
-    previousOptionsHash = optionsHash
+    previousOptionsHash = optionsHash;
     cachedOptions = {
       ...options,
       conditionNames: options?.conditionNames ?? defaultConditionNames,
       extensions: options?.extensions ?? defaultExtensions,
       extensionAlias: options?.extensionAlias ?? defaultExtensionAlias,
       mainFields: options?.mainFields ?? defaultMainFields,
-      fileSystem: new enhancedResolve.CachedInputFileSystem(
-        fs,
-        5 * 1000,
-      ),
+      fileSystem: new enhancedResolve.CachedInputFileSystem(fs, 5 * 1000),
       useSyncFileSystemCalls: true,
-    }
+    };
   }
 
   if (!resolver || resolverCachedOptions !== cachedOptions) {
-    resolver = enhancedResolve.ResolverFactory.createResolver(cachedOptions)
-    resolverCachedOptions = cachedOptions
+    resolver = enhancedResolve.ResolverFactory.createResolver(cachedOptions);
+    resolverCachedOptions = cachedOptions;
   }
 
-  log('looking for:', source)
+  log("looking for:", source);
 
-  source = removeQuerystring(source)
+  source = removeQuerystring(source);
 
   // don't worry about core node/bun modules
   if (
     isBuiltin(source) ||
-    isBunModule(source, (process.versions.bun ?? 'latest') as Version)
+    isBunModule(source, (process.versions.bun ?? "latest") as Version)
   ) {
-    log('matched core:', source)
+    log("matched core:", source);
 
     return {
       found: true,
       path: null,
-    }
+    };
   }
 
-  initMappers(cachedOptions)
+  initMappers(cachedOptions);
 
-  const mappedPath = getMappedPath(source, file, cachedOptions.extensions, true)
+  const mappedPath = getMappedPath(
+    source,
+    file,
+    cachedOptions.extensions,
+    true
+  );
   if (mappedPath) {
-    log('matched ts path:', mappedPath)
+    log("matched ts path:", mappedPath);
   }
 
   // note that even if we map the path, we still need to do a final resolve
-  let foundNodePath: string | null
+  let foundNodePath: string | null;
   try {
     foundNodePath =
       resolver.resolveSync(
         {},
         path.dirname(path.resolve(file)),
-        mappedPath ?? source,
-      ) || null
+        mappedPath ?? source
+      ) || null;
   } catch {
-    foundNodePath = null
+    foundNodePath = null;
   }
 
   // naive attempt at `@types/*` resolution,
@@ -208,55 +210,55 @@ export function resolve(
       (cachedOptions.alwaysTryTypes && !foundNodePath)) &&
     !/^@types[/\\]/.test(source) &&
     !path.isAbsolute(source) &&
-    !source.startsWith('.')
+    !source.startsWith(".")
   ) {
     const definitelyTyped = resolve(
-      '@types' + path.sep + mangleScopedPackage(source),
+      "@types" + path.sep + mangleScopedPackage(source),
       file,
-      options,
-    )
+      options
+    );
     if (definitelyTyped.found) {
-      return definitelyTyped
+      return definitelyTyped;
     }
   }
 
   if (foundNodePath) {
-    log('matched node path:', foundNodePath)
+    log("matched node path:", foundNodePath);
 
     return {
       found: true,
       path: foundNodePath,
-    }
+    };
   }
 
-  log("didn't find ", source)
+  log("didn't find ", source);
 
   return {
     found: false,
-  }
+  };
 }
 
 /** Remove any trailing querystring from module id. */
 function removeQuerystring(id: string) {
-  const querystringIndex = id.lastIndexOf('?')
+  const querystringIndex = id.lastIndexOf("?");
   if (querystringIndex >= 0) {
-    return id.slice(0, querystringIndex)
+    return id.slice(0, querystringIndex);
   }
-  return id
+  return id;
 }
 
 const isFile = (path?: string | undefined): path is string => {
   try {
-    return !!(path && fs.statSync(path, { throwIfNoEntry: false })?.isFile())
+    return !!(path && fs.statSync(path, { throwIfNoEntry: false })?.isFile());
   } catch {
     // Node 12 does not support throwIfNoEntry.
-    return false
+    return false;
   }
-}
+};
 
 const isModule = (modulePath?: string | undefined): modulePath is string => {
-  return !!modulePath && isFile(path.resolve(modulePath, 'package.json'))
-}
+  return !!modulePath && isFile(path.resolve(modulePath, "package.json"));
+};
 
 /**
  * @param {string} source the module to resolve; i.e './some-module'
@@ -270,84 +272,84 @@ function getMappedPath(
   source: string,
   file: string,
   extensions: string[] = defaultExtensions,
-  retry?: boolean,
+  retry?: boolean
 ): string | undefined {
-  const originalExtensions = extensions
-  extensions = ['', ...extensions]
+  const originalExtensions = extensions;
+  extensions = ["", ...extensions];
 
-  let paths: Array<string | undefined> | undefined = []
+  let paths: Array<string | undefined> | undefined = [];
 
   if (RELATIVE_PATH_PATTERN.test(source)) {
-    const resolved = path.resolve(path.dirname(file), source)
+    const resolved = path.resolve(path.dirname(file), source);
     if (isFile(resolved)) {
-      paths = [resolved]
+      paths = [resolved];
     }
   } else {
     paths = mappers!
-      .map(mapper =>
-        mapper?.(source).map(item => [
-          ...extensions.map(ext => `${item}${ext}`),
-          ...originalExtensions.map(ext => `${item}/index${ext}`),
-        ]),
+      .map((mapper) =>
+        mapper?.(source).map((item) => [
+          ...extensions.map((ext) => `${item}${ext}`),
+          ...originalExtensions.map((ext) => `${item}/index${ext}`),
+        ])
       )
       .flat(2)
-      .filter(mappedPath => {
+      .filter((mappedPath) => {
         if (mappedPath === undefined) {
-          return false
+          return false;
         }
 
         try {
-          const stat = fs.statSync(mappedPath, { throwIfNoEntry: false })
-          if (stat === undefined) return false
-          if (stat.isFile()) return true
+          const stat = fs.statSync(mappedPath, { throwIfNoEntry: false });
+          if (stat === undefined) return false;
+          if (stat.isFile()) return true;
 
           // Maybe this is a module dir?
           if (stat.isDirectory()) {
-            return isModule(mappedPath)
+            return isModule(mappedPath);
           }
         } catch {
-          return false
+          return false;
         }
 
-        return false
-      })
+        return false;
+      });
   }
 
   if (retry && paths.length === 0) {
-    const isJs = JS_EXT_PATTERN.test(source)
+    const isJs = JS_EXT_PATTERN.test(source);
     if (isJs) {
-      const jsExt = path.extname(source)
-      const tsExt = jsExt.replace('js', 'ts')
-      const basename = source.replace(JS_EXT_PATTERN, '')
+      const jsExt = path.extname(source);
+      const tsExt = jsExt.replace("js", "ts");
+      const basename = source.replace(JS_EXT_PATTERN, "");
 
       const resolved =
         getMappedPath(basename + tsExt, file) ||
         getMappedPath(
-          basename + '.d' + (tsExt === '.tsx' ? '.ts' : tsExt),
-          file,
-        )
+          basename + ".d" + (tsExt === ".tsx" ? ".ts" : tsExt),
+          file
+        );
 
       if (resolved) {
-        return resolved
+        return resolved;
       }
     }
 
     for (const ext of extensions) {
       const resolved =
         (isJs ? null : getMappedPath(source + ext, file)) ||
-        getMappedPath(source + `/index${ext}`, file)
+        getMappedPath(source + `/index${ext}`, file);
 
       if (resolved) {
-        return resolved
+        return resolved;
       }
     }
   }
 
   if (paths.length > 1) {
-    log('found multiple matching ts paths:', paths)
+    log("found multiple matching ts paths:", paths);
   }
 
-  return paths[0]
+  return paths[0];
 }
 
 function initMappers(options: InternalResolverOptions) {
@@ -356,52 +358,52 @@ function initMappers(options: InternalResolverOptions) {
     mappersCachedOptions === options &&
     prevCwd === process.cwd()
   ) {
-    return
+    return;
   }
-  prevCwd = process.cwd()
+  prevCwd = process.cwd();
 
   const configPaths =
-    typeof options.project === 'string'
+    typeof options.project === "string"
       ? [options.project]
       : Array.isArray(options.project)
       ? options.project
-      : [process.cwd()]
+      : [process.cwd()];
 
-  const ignore = ['!**/node_modules/**']
+  const ignore = ["!**/node_modules/**"];
 
   // turn glob patterns into paths
   const projectPaths = [
     ...new Set([
-      ...configPaths.filter(path => !isGlob(path)),
-      ...globSync([...configPaths.filter(path => isGlob(path)), ...ignore]),
+      ...configPaths.filter((path) => !isGlob(path)),
+      ...globSync([...configPaths.filter((path) => isGlob(path)), ...ignore]),
     ]),
-  ]
+  ];
 
-  mappers = projectPaths.map(projectPath => {
-    let tsconfigResult: TsConfigResult | null
+  mappers = projectPaths.map((projectPath) => {
+    let tsconfigResult: TsConfigResult | null;
 
     if (isFile(projectPath)) {
-      const { dir, base } = path.parse(projectPath)
-      tsconfigResult = getTsconfig(dir, base)
+      const { dir, base } = path.parse(projectPath);
+      tsconfigResult = getTsconfig(dir, base);
     } else {
-      tsconfigResult = getTsconfig(projectPath)
+      tsconfigResult = getTsconfig(projectPath);
     }
 
-    return tsconfigResult && createPathsMatcher(tsconfigResult)
-  })
+    return tsconfigResult && createPathsMatcher(tsconfigResult);
+  });
 
-  mappersCachedOptions = options
+  mappersCachedOptions = options;
 }
 
 /**
  * For a scoped package, we must look in `@types/foo__bar` instead of `@types/@foo/bar`.
  */
 function mangleScopedPackage(moduleName: string) {
-  if (moduleName.startsWith('@')) {
-    const replaceSlash = moduleName.replace(path.sep, '__')
+  if (moduleName.startsWith("@")) {
+    const replaceSlash = moduleName.replace(path.sep, "__");
     if (replaceSlash !== moduleName) {
-      return replaceSlash.slice(1) // Take off the "@"
+      return replaceSlash.slice(1); // Take off the "@"
     }
   }
-  return moduleName
+  return moduleName;
 }
